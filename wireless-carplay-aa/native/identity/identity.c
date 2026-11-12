@@ -114,10 +114,13 @@ static int bind(void){
     wireless_lookup=dlsym(lib,"iAP2ControlIden_WirelessGetPointer");
     const Param *(*get_info)(u32*)=dlsym(lib,"iAP2ControlIden_GetVehicleInfoParamList");
     const Param *(*get_status)(u32*)=dlsym(lib,"iAP2ControlIden_GetVehicleStatusParamList");
-    if(!protect_page || !lock_mutex || !unlock_mutex || !raw_builder || !root_table || !root_lookup
-            || !info_lookup || !status_lookup || !get_info || !get_status)return -18;
-    u32 n=0;info_table=get_info(&n);if(n!=5 || !info_table)return -18;
-    status_table=get_status(&n);if(n!=13 || !status_table)return -18;
+    if(!protect_page || !lock_mutex || !unlock_mutex)return -20;
+    if(!raw_builder)return -21;
+    if(!root_table || !root_lookup)return -22;
+    if(!info_lookup || !get_info)return -23;
+    if(!status_lookup || !get_status)return -24;
+    u32 n=0;info_table=get_info(&n);if(n!=5 || !info_table)return -25;
+    status_table=get_status(&n);if(n!=13 || !status_table)return -26;
     return 0;
 }
 static int configure(const char *name,u32 len,int engine_type,int dc_type,u32 dc,int ac_type,u32 ac,const char *theme_id,u32 theme_len){

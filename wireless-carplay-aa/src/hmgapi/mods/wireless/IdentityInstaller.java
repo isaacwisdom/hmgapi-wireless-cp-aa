@@ -24,7 +24,13 @@ final class IdentityInstaller {
         });
         // The verified gate is safe while unarmed and permits consumers loaded live later.
         mod.nativePatch(app, "libiap2session.so");
-        apply(registry);
+        try { apply(registry); }
+        catch (Throwable t) {
+            // Identification is an optional extension of the iAP2 server. A native ABI
+            // mismatch must not prevent Wireless from installing its bridge and TBT hooks.
+            mod.error("CarPlay identification unavailable; Wireless continues without it", t);
+            return;
+        }
         MethodHook groups = new MethodHook() {
             @Override protected void afterHookedMethod(Param p) throws Throwable {
                 if (contributions.vehicle() != null) enableGroups(app.classLoader);
