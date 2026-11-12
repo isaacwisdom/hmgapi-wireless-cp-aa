@@ -24,7 +24,12 @@ final class IdentityInstaller {
         });
         // The verified gate is safe while unarmed and permits consumers loaded live later.
         mod.nativePatch(app, "libiap2session.so");
-        try { apply(registry); }
+        // Do not let the JNI library be the first code to dlopen the target: native dlopen
+        // bypasses HMG-API's Runtime.load hooks, leaving the queued recipe unapplied.
+        try {
+            NativeIdentity.loadTarget();
+            apply(registry);
+        }
         catch (Throwable t) {
             // Identification is an optional extension of the iAP2 server. A native ABI
             // mismatch must not prevent Wireless from installing its bridge and TBT hooks.
