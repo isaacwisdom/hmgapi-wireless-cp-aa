@@ -17,6 +17,7 @@ on by default:
 |---|---|
 | Turn-by-turn on the cluster and HUD | The phone's directions on the cluster and HUD, for CarPlay and Android Auto |
 | Wireless CarPlay | The Bluetooth bridge and Wi-Fi sessions CarPlay needs |
+| Shared CarPlay identity | A typed API other mods use to contribute vehicle identity without competing native patches |
 | CarPlay music and Siri over Wi-Fi | AAC and Opus audio (`libleafiaaac.so`, using the head unit's own codecs) |
 | Settings > Phone Projection opens Device Connections | A hook in the Settings app (US/Canada) |
 | USB drives and hubs don't start wired Android Auto | A hook in the Android Auto app: a USB stick no longer blocks wireless Android Auto |
@@ -92,6 +93,9 @@ HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/cpturns/test.sh
 ```
 ```
 HMGAPI_SDK=$HMGAPI_SDK sh wireless-carplay-aa/tools/recipes/test.sh
+
+CLANG=clang LLD=ld.lld QEMU=qemu-system-arm OBJCOPY=llvm-objcopy \
+  python3 wireless-carplay-aa/native/identity/test_equivalence.py
 ```
 ```
 $HMGAPI_SDK/bin/check-scripts.sh wireless-carplay-aa
@@ -100,7 +104,9 @@ $HMGAPI_SDK/bin/check-scripts.sh wireless-carplay-aa
 `test.sh` and `tools/recipes/test.sh` also check the mod on a car's real stock files,
 which aren't in any repository (maintainers keep them privately, in `~/hmg-private`);
 without them those parts say "skipped" and pass. `native/leafiaaac/build.sh` rebuilds
-`files/libleafiaaac.so` (clang + lld).
+`files/libleafiaaac.so` (clang + lld). `native/identity/build.sh` rebuilds the
+generic `files/libcarplayidentity.so`; its equivalence test executes the ARM serializer
+and compares its output with the former EV Routing implementation.
 
 Releases: a maintainer pushes a tag `v<mod.json version>`; the release workflow tests,
 signs and makes a draft release (see [CONTRIBUTING.md](CONTRIBUTING.md)).

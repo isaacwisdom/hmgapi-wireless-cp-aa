@@ -39,6 +39,7 @@ check "apply (every part)" 0 $rc
 check "turn-by-turn GPM is hooks now: GPM untouched" "" "$(echo "$out" | grep HKMC_GPM)"
 check "AA and CarPlay libraries are patched in memory now: files untouched" "" "$(echo "$out" | grep 'libautoreceiver\|libCarPlay')"
 has "audio converter added" "/system/lib/libleafiaaac.so" "$out"
+has "CarPlay identity serializer added" "/system/lib/libcarplayidentity.so" "$out"
 check "menu fix is a hook now: BtSettings untouched" "" "$(echo "$out" | grep HKMC_BtSettings)"
 has "props live" "prop/persist.ium.support=carplay" "$(cat $R/settings.txt)"
 has "bridge props live" "prop/persist.iap2.iden.wireless=t" "$(cat $R/settings.txt)"

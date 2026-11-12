@@ -34,6 +34,7 @@ import hmgapi.hook.Points;
  * start as before (hook point framework.context_impl.start_service).
  */
 public final class Wireless extends ModEntry {
+    private final IdentityRegistry identity = new IdentityRegistry();
     static final String BTSETTINGS = "com.android.btsettings";
     static final String GPM = "com.google.android.projection.sink";
     static final String GAL_SERVICE = "com.google.android.projection.service.GalReceiverService";
@@ -53,6 +54,11 @@ public final class Wireless extends ModEntry {
     static final String[] NAVI_TBT = { "update_tbt_info", "update_tbt_sub_info", "update_tbt_sub_info_b", "update_tbt_sub_info2",
         "update_tbt_sub_info2_b", "update_tbt_sub_info_2c", "update_remain_dis", "update_tp_crossroad_name",
         "update_tp_destination_name", "update_tp_turn_list", "update_tp_turn_list_new", "update_tp_lane_info", "update_lane_info" };
+
+    @Override
+    public void zygoteInit(ModContext mod) {
+        mod.publish(hmgapi.mods.wireless.api.CarPlayIdentification.SERVICE, identity);
+    }
 
     @Override
     public void appLoaded(final ModContext mod, LoadedApp app) {
@@ -108,6 +114,7 @@ public final class Wireless extends ModEntry {
      */
     private void iap2(final ModContext mod, LoadedApp app) {
         final ClassLoader cl = app.classLoader;
+        IdentityInstaller.install(mod, app, identity);
         if (mod.settingBoolean("tbt", true)) {
             mod.hook(cl, "iap2.init_info.check_supports_features", new MethodHook() {
                 @Override

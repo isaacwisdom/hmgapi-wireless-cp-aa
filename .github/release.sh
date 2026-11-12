@@ -23,6 +23,7 @@ p=$($ENG uuid .github/mod-key.pub)
 if [ -f "$KEY.pub" ]; then cmp -s "$KEY.pub" .github/mod-key.pub || { echo "$KEY.pub isn't .github/mod-key.pub: wrong key?"; exit 1; }
 else cp .github/mod-key.pub "$KEY.pub"; fi
 rm -rf out/build out/work out/packages out/dist out/assets
+sh "$MOD/native/identity/build.sh"
 sh "$SDK/bin/build-mod.sh" "$MOD" "out/build/$MOD" "out/work/$MOD"
 Z=$(HMGAPI_MOD_BUILD="$PWD/out/build/$MOD" sh "$SDK/bin/mkmodpkg.sh" "$MOD" "$KEY" | tail -1)
 [ "$(basename "$Z")" = "$MOD-$V.zip" ] || { echo "$Z"; echo "signing failed: is the key (MOD_KEY) the private half of .github/mod-key.pub, author $UUID?"; exit 1; }
