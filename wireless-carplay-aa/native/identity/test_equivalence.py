@@ -10,6 +10,11 @@ OBJCOPY=os.environ.get('OBJCOPY','llvm-objcopy')
 JAVA_HOME=Path(os.environ.get('JAVA_HOME','/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home'))
 with tempfile.TemporaryDirectory() as d:
     d=Path(d); obj=d/'h.o'; elf=d/'h.elf'; script=d/'arm.ld'
+    classes=d/'classes';classes.mkdir()
+    source=HERE.parents[1]/'src/hmgapi/mods/wireless'
+    subprocess.run([JAVA_HOME/'bin/javac','--release','7','-Xlint:-options','-d',classes,
+                    source/'api/CarPlayIdentification.java',source/'IdentityRegistry.java',HERE/'IdentityRegistryHarness.java'],check=True)
+    subprocess.run([JAVA_HOME/'bin/java','-cp',classes,'hmgapi.mods.wireless.IdentityRegistryHarness'],check=True)
     gate_obj=d/'gate.o';gate_elf=d/'gate.elf';gate_bin=d/'gate.bin'
     subprocess.run([CLANG,'--target=armv7-none-eabi','-mthumb','-c',HERE/'recipe_gate.s','-o',gate_obj],check=True)
     subprocess.run([LLD,'--image-base=0','-Ttext=0','-e','gate','-o',gate_elf,gate_obj],check=True)

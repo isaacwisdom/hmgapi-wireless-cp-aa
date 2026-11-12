@@ -9,13 +9,52 @@ package hmgapi.mods.wireless.api;
  */
 public interface CarPlayIdentification {
     String SERVICE = "carplay-identification";
-    int API_VERSION = 1;
+    int API_VERSION = 2;
 
     /** Register or replace one mod's vehicle identity contribution. */
     void registerVehicle(String modId, VehicleIdentity vehicle);
 
     /** Remove a mod's vehicle contribution, for example when it is disabled. */
     void removeVehicle(String modId);
+
+    /** Register or replace one mod's CarPlay theme-asset capability. */
+    void registerTheme(String modId, ThemeIdentity theme);
+
+    /** Remove a mod's theme contribution without affecting other identity fields. */
+    void removeTheme(String modId);
+
+    /** A theme asset known to the phone, kept separate from any mod's display implementation. */
+    final class ThemeIdentity {
+        public final String assetIdentifier;
+        public final long assetVersion;
+        public final String sdkVersion;
+
+        public ThemeIdentity(String assetIdentifier, long assetVersion, String sdkVersion) {
+            ascii("assetIdentifier", assetIdentifier, 1, 64, false);
+            if (assetVersion < 0 || assetVersion > 0xffffffffL)
+                throw new IllegalArgumentException("assetVersion");
+            ascii("sdkVersion", sdkVersion, 1, 24, true);
+            String encoded = assetIdentifier + ":" + assetVersion + ":" + sdkVersion;
+            if (encoded.length() > 96) throw new IllegalArgumentException("encoded theme identity");
+            this.assetIdentifier = assetIdentifier;
+            this.assetVersion = assetVersion;
+            this.sdkVersion = sdkVersion;
+        }
+
+        /** Canonical form used by Apple's ThemeAssetIdentifier identification parameter. */
+        public String encoded() { return assetIdentifier + ":" + assetVersion + ":" + sdkVersion; }
+
+        private static void ascii(String field, String value, int min, int max, boolean dot) {
+            if (value == null || value.length() < min || value.length() > max)
+                throw new IllegalArgumentException(field);
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                boolean ok = c >= '0' && c <= '9' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+                        || c == '-' || c == '_' || dot && c == '.';
+                if (!ok) throw new IllegalArgumentException(field);
+            }
+        }
+    }
 
     /** Immutable EV identity fields represented in the iAP2 VehicleInformation group. */
     final class VehicleIdentity {

@@ -8,6 +8,7 @@ import hmgapi.mods.wireless.api.CarPlayIdentification;
 /** Process-local, validated contributions consumed by the native serializer. */
 final class IdentityRegistry implements CarPlayIdentification {
     private final Map<String, VehicleIdentity> vehicles = new LinkedHashMap<String, VehicleIdentity>();
+    private final Map<String, ThemeIdentity> themes = new LinkedHashMap<String, ThemeIdentity>();
     private Runnable changed;
 
     @Override
@@ -31,12 +32,40 @@ final class IdentityRegistry implements CarPlayIdentification {
         if (notify != null) notify.run();
     }
 
+    @Override
+    public void registerTheme(String modId, ThemeIdentity theme) {
+        checkModId(modId);
+        if (theme == null) throw new IllegalArgumentException("theme");
+        Runnable notify;
+        synchronized (this) {
+            if (!themes.isEmpty() && !themes.containsKey(modId))
+                throw new IllegalStateException("CarPlay theme identity already belongs to " + themes.keySet());
+            themes.put(modId, theme); notify = changed;
+        }
+        if (notify != null) notify.run();
+    }
+
+    @Override
+    public void removeTheme(String modId) {
+        checkModId(modId);
+        Runnable notify;
+        synchronized (this) { themes.remove(modId); notify = changed; }
+        if (notify != null) notify.run();
+    }
+
     /** Exactly one vehicle identity may win; ambiguity is an installation/configuration error. */
     synchronized VehicleIdentity vehicle() {
         if (vehicles.isEmpty()) return null;
         if (vehicles.size() != 1)
             throw new IllegalStateException("conflicting CarPlay vehicle identity contributors: " + vehicles.keySet());
         return vehicles.values().iterator().next();
+    }
+
+    synchronized ThemeIdentity theme() {
+        if (themes.isEmpty()) return null;
+        if (themes.size() != 1)
+            throw new IllegalStateException("conflicting CarPlay theme contributors: " + themes.keySet());
+        return themes.values().iterator().next();
     }
 
     synchronized void onChange(Runnable listener) { changed = listener; }

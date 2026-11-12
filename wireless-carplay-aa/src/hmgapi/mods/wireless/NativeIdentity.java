@@ -5,6 +5,6 @@ final class NativeIdentity {
     private NativeIdentity() {}
     static void load() { System.load("/system/lib/libcarplayidentity.so"); }
     static native int configure(byte[] displayName, int engineType, int dcConnector,
-            int dcPowerW, int acConnector, int acPowerW);
+            int dcPowerW, int acConnector, int acPowerW, byte[] themeIdentity);
     static native void shutdown();
 }

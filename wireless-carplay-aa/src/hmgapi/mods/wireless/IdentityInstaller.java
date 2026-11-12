@@ -38,23 +38,28 @@ final class IdentityInstaller {
 
     private static synchronized void apply(IdentityRegistry registry) {
         CarPlayIdentification.VehicleIdentity vehicle = registry.vehicle();
-        if (vehicle == null) { if (loaded) NativeIdentity.shutdown(); return; }
+        CarPlayIdentification.ThemeIdentity theme = registry.theme();
+        if (vehicle == null && theme == null) { if (loaded) NativeIdentity.shutdown(); return; }
         int dcType = -1, dcPower = 0, acType = -1, acPower = 0;
-        for (CarPlayIdentification.Connector connector : vehicle.connectors) {
-            if (connector.type == CarPlayIdentification.VehicleIdentity.CONNECTOR_AC) {
-                if (acType != -1) throw new IllegalStateException("more than one CarPlay AC connector");
-                acType = connector.type; acPower = connector.maximumPowerW;
-            } else {
-                if (dcType != -1) throw new IllegalStateException("more than one CarPlay DC connector");
-                dcType = connector.type; dcPower = connector.maximumPowerW;
+        if (vehicle != null) {
+            for (CarPlayIdentification.Connector connector : vehicle.connectors) {
+                if (connector.type == CarPlayIdentification.VehicleIdentity.CONNECTOR_AC) {
+                    if (acType != -1) throw new IllegalStateException("more than one CarPlay AC connector");
+                    acType = connector.type; acPower = connector.maximumPowerW;
+                } else {
+                    if (dcType != -1) throw new IllegalStateException("more than one CarPlay DC connector");
+                    dcType = connector.type; dcPower = connector.maximumPowerW;
+                }
             }
+            if (dcType == -1 || acType == -1)
+                throw new IllegalStateException("CarPlay EV identity requires one DC and one AC connector");
         }
-        if (dcType == -1 || acType == -1)
-            throw new IllegalStateException("CarPlay EV identity requires one DC and one AC connector");
         if (!loaded) { NativeIdentity.load(); loaded = true; }
         try {
-            int rc = NativeIdentity.configure(vehicle.displayName.getBytes("UTF-8"), vehicle.engineType,
-                    dcType, dcPower, acType, acPower);
+            byte[] name = vehicle == null ? new byte[0] : vehicle.displayName.getBytes("UTF-8");
+            byte[] themeId = theme == null ? new byte[0] : theme.encoded().getBytes("US-ASCII");
+            int rc = NativeIdentity.configure(name, vehicle == null ? -1 : vehicle.engineType,
+                    dcType, dcPower, acType, acPower, themeId);
             if (rc != 0) throw new IllegalStateException("native CarPlay identification=" + rc);
         } catch (java.io.UnsupportedEncodingException impossible) {
             throw new AssertionError(impossible);

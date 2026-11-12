@@ -72,6 +72,24 @@ that needs a new or changed point:
 This repository's pull request can be open, as a draft, during 1 and 2; its CI fails
 until the SDK has the point. See [HMG-API's docs/mod-repos.md](https://github.com/Open-HMG/HMG-API/blob/main/docs/mod-repos.md), section 4.
 
+## CarPlay identification API
+
+Mods that declare `wireless-carplay-aa >=2.2.0-beta.3 <3.0.0` in `requires` can use the
+exported `hmgapi.mods.wireless.api` package. Wireless owns the verified native serializer;
+each consumer owns only the semantic facts it contributes. Vehicle identity and theme
+identity have independent owners and are composed without exposing raw iAP2 parameters.
+
+```java
+CarPlayIdentification identity = (CarPlayIdentification) mod.use(
+    "wireless-carplay-aa", CarPlayIdentification.SERVICE);
+identity.registerTheme(mod.id,
+    new CarPlayIdentification.ThemeIdentity("EXAMPLE", 1, "19.0"));
+```
+
+Call `removeTheme(mod.id)` when disabling that contribution. A second mod cannot replace
+an existing theme owner; it receives an error instead. The API does not provide display
+code, theme assets, or CarPlay session behavior—those remain the consumer's responsibility.
+
 ## Building and testing
 
 CI runs HMG-API's mod workflow, with the HMG-API mod SDK pinned in `hmgapi-sdk.json`
