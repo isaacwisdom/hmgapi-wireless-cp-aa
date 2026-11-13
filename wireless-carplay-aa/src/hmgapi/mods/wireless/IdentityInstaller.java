@@ -9,7 +9,12 @@ import hmgapi.mods.wireless.api.CarPlayIdentification;
 /** Arms the native serializer from one validated snapshot of all contributions. */
 final class IdentityInstaller {
     private IdentityInstaller() {}
-    private static boolean loaded;
+    private static boolean loaded, armed;
+
+    private static final class NativeFailure extends IllegalStateException {
+        final int code;
+        NativeFailure(int code) { super("native CarPlay identification=" + code); this.code = code; }
+    }
 
     static void install(final ModContext mod, final LoadedApp app, IdentityRegistry registry) {
         final IdentityRegistry contributions = registry;
@@ -19,7 +24,7 @@ final class IdentityInstaller {
                     apply(contributions);
                     if (contributions.vehicle() != null) enableGroups(app.classLoader);
                 }
-                catch (Throwable t) { mod.error("CarPlay identification contribution change", t); }
+                catch (Throwable t) { failure(mod, "CarPlay identification contribution change", t); }
             }
         });
         // The verified gate is safe while unarmed and permits consumers loaded live later.
@@ -33,24 +38,31 @@ final class IdentityInstaller {
         catch (Throwable t) {
             // Identification is an optional extension of the iAP2 server. A native ABI
             // mismatch must not prevent Wireless from installing its bridge and TBT hooks.
-            mod.error("CarPlay identification unavailable; Wireless continues without it", t);
-            return;
+            failure(mod, "CarPlay identification unavailable; Wireless continues without it", t);
         }
         MethodHook groups = new MethodHook() {
-            @Override protected void afterHookedMethod(Param p) throws Throwable {
-                if (contributions.vehicle() != null) enableGroups(app.classLoader);
+            @Override protected void afterHookedMethod(Param p) {
+                try {
+                    // appLoaded may precede the iAP2 server's native initialization. This
+                    // point runs after it and before the identification message is built.
+                    if (!armed) apply(contributions);
+                    if (armed && contributions.vehicle() != null) enableGroups(app.classLoader);
+                } catch (Throwable t) {
+                    failure(mod, "CarPlay identification late initialization", t);
+                }
             }
         };
         mod.hook(app.classLoader, "iap2.init_info.check_supports_features", groups);
-        try { if (registry.vehicle() != null) enableGroups(app.classLoader); }
+        try { if (armed && registry.vehicle() != null) enableGroups(app.classLoader); }
         catch (Exception e) { throw new IllegalStateException("CarPlay identification groups", e); }
-        mod.log("CarPlay identification: contribution serializer installed");
+        mod.log(armed ? "CarPlay identification: contribution serializer installed"
+                : "CarPlay identification: waiting for iAP2 native initialization");
     }
 
     private static synchronized void apply(IdentityRegistry registry) {
         CarPlayIdentification.VehicleIdentity vehicle = registry.vehicle();
         CarPlayIdentification.ThemeIdentity theme = registry.theme();
-        if (vehicle == null && theme == null) { if (loaded) NativeIdentity.shutdown(); return; }
+        if (vehicle == null && theme == null) { if (loaded) NativeIdentity.shutdown(); armed = false; return; }
         int dcType = -1, dcPower = 0, acType = -1, acPower = 0;
         if (vehicle != null) {
             for (CarPlayIdentification.Connector connector : vehicle.connectors) {
@@ -71,10 +83,17 @@ final class IdentityInstaller {
             byte[] themeId = theme == null ? new byte[0] : theme.encoded().getBytes("US-ASCII");
             int rc = NativeIdentity.configure(name, vehicle == null ? -1 : vehicle.engineType,
                     dcType, dcPower, acType, acPower, themeId);
-            if (rc != 0) throw new IllegalStateException("native CarPlay identification=" + rc);
+            if (rc != 0) throw new NativeFailure(rc);
+            armed = true;
         } catch (java.io.UnsupportedEncodingException impossible) {
             throw new AssertionError(impossible);
         }
+    }
+
+    private static void failure(ModContext mod, String message, Throwable t) {
+        if (t instanceof NativeFailure && ((NativeFailure) t).code == -21)
+            mod.log(message + ": native gate not ready; will retry before identification");
+        else mod.error(message, t);
     }
 
     private static void enableGroups(ClassLoader cl) throws Exception {
